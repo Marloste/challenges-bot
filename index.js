@@ -5,10 +5,17 @@ const { Client, GatewayIntentBits, Events, ActionRowBuilder, ButtonBuilder, Butt
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 // Challenges for each rank
-const cadetChallenges = [
-  "Find 3 pieces of EMS equipment in under 30 seconds.",
-  "Explain the ABCs to someone in VC.",
-  "Do 10 jumping jacks before answering the next question."
+const anyoneChallenges = [
+  "Radio  Ready - use all the 10 radio codes during a single shift.",
+  "Field Medic - treat 3 patients back-to-back without returning to station.",
+  "Team Player - assist another medic, let them lead.",
+  "Do a full workout in the gym.",
+  "Get a buddy - convince a friend to try out EMS.",
+  "Clean Sweep - clean the entire station & restock your ambulance.",
+  "Key Master - get all the keys from HC.",
+  "Pitch Perfect - create a suggestion which gets approved.",
+  "Roleplay Rockstar - fully RP an entire call with emotion, realism, and depth.",
+  "Scene Snapper - take an awesome RP photo during a scene and post it in pictures."
 ];
 
 const emtChallenges = [
