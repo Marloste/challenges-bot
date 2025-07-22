@@ -19,15 +19,15 @@ const anyoneChallenges = [
 ];
 
 const paramedicChallenges = [
-  "Describe how to treat a GSW in 30 seconds.",
-  "Name 3 causes of hypoxia.",
-  "Explain SAMPLE history without looking at notes."
+  "Medicine Master - use 3 different medications in a single scene.",
+  "Shockwave - use an AED.",
+  "IV Genius - place 3 IV’s in one shift."
 ];
 
 const supervisorChallenges = [
-  "Explain how to calculate a drug dosage (ALS level).",
-  "List 3 signs of a tension pneumothorax.",
-  "Name 2 IV meds and their indications."
+  "Supervisor + Switch Roles, allow lower ranks to command a scene, make decisions. (Still supervise so they don’t do anything wrong, you’re still in control.)",
+  "Scene Commander - lead a multi-unit call with calm and clarity.",
+  "Run it back - recreate a failed call as a training scenario."
 ];
 
 // Track user weekly usage
@@ -67,7 +67,7 @@ client.on(Events.InteractionCreate, async interaction => {
         );
 
       await interaction.reply({
-        content: '🎯 **Choose your rank to get a challenge:**',
+        content: '🎯 **Choose your rank to get a challenge (below). You will have until the next week (monday) to complete the challenge. Possbile rewards: Hall of Fame & GIF perms (Maybe in future a new ambulance). Send proof (clip) in #pictures and ping Stan to claim your prize.**',
         components: [row]
       });
     }
