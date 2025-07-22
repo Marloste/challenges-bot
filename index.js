@@ -67,7 +67,9 @@ client.on(Events.InteractionCreate, async interaction => {
         );
 
       await interaction.reply({
-        content: '🎯 **Choose your rank to get a challenge (below). You will have until the next week (monday) to complete the challenge. Possbile rewards: Hall of Fame & GIF perms (Maybe in future a new ambulance). Send proof (clip) in #pictures and ping Stan to claim your prize.**',
+        content: '🎯 **Choose your rank to get a challenge (below). You will have until the next week (monday) to complete the challenge.
+          Possbile rewards: Hall of Fame & GIF perms (Maybe in future a new ambulance). 
+          Send proof (clip) in pictures and ping Stan to claim your prize.**',
         components: [row]
       });
     }
