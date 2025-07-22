@@ -18,13 +18,13 @@ const anyoneChallenges = [
   "Scene Snapper - take an awesome RP photo during a scene and post it in pictures."
 ];
 
-const emtChallenges = [
+const paramedicChallenges = [
   "Describe how to treat a GSW in 30 seconds.",
   "Name 3 causes of hypoxia.",
   "Explain SAMPLE history without looking at notes."
 ];
 
-const paramedicChallenges = [
+const supervisorChallenges = [
   "Explain how to calculate a drug dosage (ALS level).",
   "List 3 signs of a tension pneumothorax.",
   "Name 2 IV meds and their indications."
@@ -53,16 +53,16 @@ client.on(Events.InteractionCreate, async interaction => {
       const row = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
-            .setCustomId('cadet')
-            .setLabel('Cadet Challenge')
+            .setCustomId('anyone')
+            .setLabel('Anyone Challenge')
             .setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder()
-            .setCustomId('emt')
-            .setLabel('EMT Challenge')
-            .setStyle(ButtonStyle.Primary),
           new ButtonBuilder()
             .setCustomId('paramedic')
             .setLabel('Paramedic Challenge')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId('supervisor')
+            .setLabel('Supervisor Challenge')
             .setStyle(ButtonStyle.Danger),
         );
 
@@ -91,12 +91,12 @@ client.on(Events.InteractionCreate, async interaction => {
   userWeekUsed.set(userId, currentWeek);
 
   let challenge;
-  if (interaction.customId === 'cadet') {
-    challenge = cadetChallenges[Math.floor(Math.random() * cadetChallenges.length)];
-  } else if (interaction.customId === 'emt') {
-    challenge = emtChallenges[Math.floor(Math.random() * emtChallenges.length)];
+  if (interaction.customId === 'anyone') {
+    challenge = anyoneChallenges[Math.floor(Math.random() * anyoneChallenges.length)];
   } else if (interaction.customId === 'paramedic') {
     challenge = paramedicChallenges[Math.floor(Math.random() * paramedicChallenges.length)];
+  } else if (interaction.customId === 'supervisor') {
+    challenge = supervisorChallenges[Math.floor(Math.random() * supervisorChallenges.length)];
   }
 
   if (challenge) {
