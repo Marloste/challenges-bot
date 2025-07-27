@@ -117,6 +117,37 @@ server.listen(PORT, () => {
   console.log(`✅ Keep-alive server running on port ${PORT}`);
 });
 
+// Store challenges and message ID
+const userChallenges = {}; 
+let challengeBoardMessageId = "1397666455725670441"; // paste after sending it manually
+let challengeBoardChannelId = "1397666374918344755"; // the channel where the board is
+
+// Function to refresh the board
+async function updateChallengeBoard(client) {
+  const channel = await client.channels.fetch(challengeBoardChannelId);
+  const message = await channel.messages.fetch(challengeBoardMessageId);
+
+  if (Object.keys(userChallenges).length === 0) {
+    await message.edit("📜 **No challenges assigned this week yet.**");
+  } else {
+    let list = "";
+    for (const [userId, challenge] of Object.entries(userChallenges)) {
+      list += `<@${userId}> → **${challenge}**\n`;
+    }
+    await message.edit(`📜 **Current Weekly Challenges:**\n${list}`);
+  }
+}
+
+// When giving a challenge (button code)
+const challenge = randomChallenge;
+userChallenges[interaction.user.id] = challenge;
+
+await interaction.reply(`✅ Your challenge: **${challenge}** (Check the challenge board anytime!)`);
+
+// Update the board after assigning
+updateChallengeBoard(client);
+
+
 
 client.login(process.env.TOKEN);
 
