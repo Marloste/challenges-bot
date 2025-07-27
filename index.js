@@ -1,12 +1,23 @@
 // index.js
 require('dotenv').config();
 const { Client, GatewayIntentBits, Events, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const http = require('http');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// Challenges for each rank
+// ✅ Keep-alive server (prevents Koyeb sleep if monitored)
+const server = http.createServer((req, res) => {
+  res.writeHead(200);
+  res.end('OK');
+});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`✅ Keep-alive server running on port ${PORT}`);
+});
+
+// ✅ Challenges for each rank
 const anyoneChallenges = [
-  "Radio  Ready - use all the 10 radio codes during a single shift.",
+  "Radio Ready - use all the 10 radio codes during a single shift.",
   "Field Medic - treat 3 patients back-to-back without returning to station.",
   "Team Player - assist another medic, let them lead.",
   "Do a full workout in the gym.",
@@ -25,15 +36,20 @@ const paramedicChallenges = [
 ];
 
 const supervisorChallenges = [
-  "Supervisor + Switch Roles, allow lower ranks to command a scene, make decisions. (Still supervise so they don’t do anything wrong, you’re still in control.)",
+  "Switch Roles - allow lower ranks to command a scene (still supervise).",
   "Scene Commander - lead a multi-unit call with calm and clarity.",
   "Run it back - recreate a failed call as a training scenario."
 ];
 
-// Track user weekly usage
+// ✅ Weekly usage & challenge storage
 const userWeekUsed = new Map();
+const userChallenges = {}; // { userId: challenge }
 
-// Function to get current ISO week number (Monday-based)
+// ✅ Challenge board message & channel
+let challengeBoardMessageId = "1397666455725670441"; // Replace with the message you manually sent
+let challengeBoardChannelId = "1397666374918344755"; // Replace with the channel ID
+
+// ✅ Get current ISO week number (Monday-based)
 function getWeekNumber(date = new Date()) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -41,42 +57,60 @@ function getWeekNumber(date = new Date()) {
   return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
 }
 
-// Bot ready
+// ✅ Update Challenge Board
+async function updateChallengeBoard(client) {
+  try {
+    const channel = await client.channels.fetch(challengeBoardChannelId);
+    const message = await channel.messages.fetch(challengeBoardMessageId);
+
+    if (Object.keys(userChallenges).length === 0) {
+      await message.edit("📜 **No challenges assigned this week yet.**");
+    } else {
+      let list = "";
+      for (const [userId, challenge] of Object.entries(userChallenges)) {
+        list += `<@${userId}> → **${challenge}**\n`;
+      }
+      await message.edit(`📜 **Current Weekly Challenges:**\n${list}`);
+    }
+  } catch (err) {
+    console.error("⚠️ Failed to update challenge board:", err);
+  }
+}
+
+// ✅ Bot Ready
 client.once(Events.ClientReady, c => {
   console.log(`✅ Logged in as ${c.user.tag}`);
 });
 
-// Handle slash command /challenge
+// ✅ /challenge command
 client.on(Events.InteractionCreate, async interaction => {
-  if (interaction.isChatInputCommand()) {
-    if (interaction.commandName === 'challenge') {
-      const row = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('anyone')
-            .setLabel('Anyone Challenge')
-            .setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder()
-            .setCustomId('paramedic')
-            .setLabel('Paramedic Challenge')
-            .setStyle(ButtonStyle.Primary),
-          new ButtonBuilder()
-            .setCustomId('supervisor')
-            .setLabel('Supervisor Challenge')
-            .setStyle(ButtonStyle.Danger),
-        );
+  if (interaction.isChatInputCommand() && interaction.commandName === 'challenge') {
+    const row = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('anyone')
+          .setLabel('Anyone Challenge')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('paramedic')
+          .setLabel('Paramedic Challenge')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('supervisor')
+          .setLabel('Supervisor Challenge')
+          .setStyle(ButtonStyle.Danger),
+      );
 
-      await interaction.reply({
-        content: `🎯 **Choose your rank to get a challenge (below). You will have until the next week (Monday) to complete the challenge.
-Possible rewards: Hall of Fame & GIF perms (Maybe in future a new ambulance).
-Send proof (clip) in pictures and ping Stan to claim your prize.**`,
-        components: [row]
-      });
-    }
+    await interaction.reply({
+      content: `🎯 **Choose your rank to get a challenge (below). You will have until next Monday to complete it.**
+Possible rewards: Hall of Fame & GIF perms (maybe a new ambulance in the future).
+Send proof (clip) in pictures and ping Stan to claim your prize.`,
+      components: [row]
+    });
   }
 });
 
-// Handle button interactions with weekly cooldown
+// ✅ Button interaction handler
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isButton()) return;
 
@@ -102,71 +136,32 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   if (challenge) {
-    await interaction.reply({ content: `✅ **Your Challenge:** ${challenge}`, ephemeral: true });
+    userChallenges[userId] = challenge;
+    await interaction.reply({ 
+      content: `✅ **Your Challenge:** ${challenge}\n(Check the challenge board anytime!)`, 
+      ephemeral: true 
+    });
+    await updateChallengeBoard(client);
   }
 });
-const http = require('http');
 
-const server = http.createServer((req, res) => {
-  res.writeHead(200);
-  res.end('OK');
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`✅ Keep-alive server running on port ${PORT}`);
-});
-
-// Store challenges and message ID
-const userChallenges = {}; 
-let challengeBoardMessageId = "1397666455725670441"; // paste after sending it manually
-let challengeBoardChannelId = "1397666374918344755"; // the channel where the board is
-
-// Function to refresh the board
-async function updateChallengeBoard(client) {
-  const channel = await client.channels.fetch(challengeBoardChannelId);
-  const message = await channel.messages.fetch(challengeBoardMessageId);
-
-  if (Object.keys(userChallenges).length === 0) {
-    await message.edit("📜 **No challenges assigned this week yet.**");
-  } else {
-    let list = "";
-    for (const [userId, challenge] of Object.entries(userChallenges)) {
-      list += `<@${userId}> → **${challenge}**\n`;
-    }
-    await message.edit(`📜 **Current Weekly Challenges:**\n${list}`);
-  }
-}
-
-// When giving a challenge (button code)
-const challenge = randomChallenge;
-userChallenges[interaction.user.id] = challenge;
-
-await interaction.reply(`✅ Your challenge: **${challenge}** (Check the challenge board anytime!)`);
-
-// Auto reset every Monday at 00:00 (server time)
+// ✅ Weekly Auto Reset (Monday 00:00)
 setInterval(async () => {
   const now = new Date();
   if (now.getDay() === 1 && now.getHours() === 0 && now.getMinutes() === 0) {
-    // Clear challenges
-    for (let key in userChallenges) {
-      delete userChallenges[key];
+    for (let key in userChallenges) delete userChallenges[key];
+    try {
+      const channel = await client.channels.fetch(challengeBoardChannelId);
+      const message = await channel.messages.fetch(challengeBoardMessageId);
+      await message.edit("📜 **New week! No challenges assigned yet.**");
+    } catch (err) {
+      console.error("⚠️ Failed to reset challenge board:", err);
     }
-
-    // Update board
-    const channel = await client.channels.fetch(challengeBoardChannelId);
-    const message = await channel.messages.fetch(challengeBoardMessageId);
-    await message.edit("📜 **New week! No challenges assigned yet.**");
-
     console.log("✅ Weekly challenges reset");
   }
-}, 60000); // checks every minute
+}, 60000);
 
-
-// Update the board after assigning
-updateChallengeBoard(client);
-
-
-
+// ✅ Login
 client.login(process.env.TOKEN);
+
 
