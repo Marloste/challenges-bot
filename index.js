@@ -96,18 +96,37 @@ async function registerCommands() {
 async function updateChallengeBoard() {
   if (!data.boardChannelId) return;
 
-  const channel = await client.channels.fetch(data.boardChannelId).catch(() => null);
-  if (!channel || !channel.isTextBased()) return;
+  let channel;
+  try {
+    channel = await client.channels.fetch(data.boardChannelId);
+  } catch (e) {
+    console.error(`❌ Could not fetch channel ${data.boardChannelId}:`, e.message);
+    return;
+  }
+
+  if (!channel || !channel.isTextBased()) {
+    console.error(`❌ Channel ${data.boardChannelId} is not text-based or unavailable.`);
+    return;
+  }
 
   let message;
   if (data.boardMessageId) {
-    message = await channel.messages.fetch(data.boardMessageId).catch(() => null);
+    try {
+      message = await channel.messages.fetch(data.boardMessageId);
+    } catch (e) {
+      console.error(`❌ Could not fetch message ${data.boardMessageId} in channel ${data.boardChannelId}:`, e.message);
+    }
   }
 
   if (!message) {
-    message = await channel.send('📜 **Weekly EMS Challenges will appear here!**');
-    data.boardMessageId = message.id;
-    saveData();
+    try {
+      message = await channel.send('📜 **Weekly EMS Challenges will appear here!**');
+      data.boardMessageId = message.id;
+      saveData();
+    } catch (e) {
+      console.error(`❌ Could not send challenge board message in channel ${data.boardChannelId}:`, e.message);
+      return;
+    }
   }
 
   if (Object.keys(data.userChallenges).length === 0) {
@@ -116,12 +135,13 @@ async function updateChallengeBoard() {
   }
 
   let content = '📜 **Current Weekly Challenges:**\n\n';
-  for (const [userId, { challenge }] of Object.entries(data.userChallenges)) {
-    content += `<@${userId}> → **${challenge}**\n`;
+  for (const [userId, challengeObj] of Object.entries(data.userChallenges)) {
+    content += `<@${userId}> → **${challengeObj.challenge}**\n`;
   }
 
   await message.edit(content);
 }
+
 
 // Buttons for ranks
 function getChallengeButtons() {
