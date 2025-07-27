@@ -235,6 +235,33 @@ http.createServer((req, res) => {
 }).listen(PORT, () => {
   console.log(`✅ Keep-alive server running on port ${PORT}`);
 });
+client.once(Events.ClientReady, async () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+
+  loadData();
+
+  // FORCE the board to create if not present
+  if (!data.boardChannelId) {
+    data.boardChannelId = "1397666374918344755"; // replace with the channel ID
+    saveData();
+    console.log(`📌 Force-set challenge board channel to ${data.boardChannelId}`);
+  }
+
+  await updateChallengeBoard();
+  await registerCommands();
+
+  // Weekly reset remains unchanged
+  setInterval(async () => {
+    const now = new Date();
+    if (now.getDay() === 1 && now.getHours() === 0 && now.getMinutes() === 0) {
+      data.userChallenges = {};
+      saveData();
+      console.log('♻️ Weekly challenges reset.');
+      await updateChallengeBoard();
+    }
+  }, 60000);
+});
+
 
 client.login(process.env.TOKEN);
 
