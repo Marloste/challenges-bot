@@ -144,6 +144,25 @@ userChallenges[interaction.user.id] = challenge;
 
 await interaction.reply(`✅ Your challenge: **${challenge}** (Check the challenge board anytime!)`);
 
+// Auto reset every Monday at 00:00 (server time)
+setInterval(async () => {
+  const now = new Date();
+  if (now.getDay() === 1 && now.getHours() === 0 && now.getMinutes() === 0) {
+    // Clear challenges
+    for (let key in userChallenges) {
+      delete userChallenges[key];
+    }
+
+    // Update board
+    const channel = await client.channels.fetch(challengeBoardChannelId);
+    const message = await channel.messages.fetch(challengeBoardMessageId);
+    await message.edit("📜 **New week! No challenges assigned yet.**");
+
+    console.log("✅ Weekly challenges reset");
+  }
+}, 60000); // checks every minute
+
+
 // Update the board after assigning
 updateChallengeBoard(client);
 
