@@ -194,12 +194,12 @@ client.on(Events.InteractionCreate, async interaction => {
       await interaction.reply({
         content: `🎯 **Choose your rank to get a weekly EMS challenge:**\nYou can only get *one* challenge per week.\n\nPossible rewards: Hall of Fame & GIF perms.\nSend proof in pictures and ping Stan to claim your prize.`,
         components: [getRankButtons()],
-        ephemeral: true
+        ephemeral: false
       });
     } else if (interaction.commandName === 'setupboard') {
       // Check admin permissions
       if (!interaction.member.permissions.has('ManageChannels')) {
-        return interaction.reply({ content: '❌ You need Manage Channels permission to use this.', ephemeral: true });
+        return interaction.reply({ content: '❌ You need Manage Channels permission to use this.', emeral: true });
       }
       data.boardChannelId = interaction.channelId;
       saveData();
@@ -207,7 +207,7 @@ client.on(Events.InteractionCreate, async interaction => {
       // Create or update board message
       const channel = await client.channels.fetch(data.boardChannelId).catch(() => null);
       if (!channel || !channel.isTextBased()) {
-        return interaction.reply({ content: '❌ Invalid channel.', ephemeral: true });
+        return interaction.reply({ content: '❌ Invalid channel.', emeral: true });
       }
 
       let message = null;
@@ -222,14 +222,14 @@ client.on(Events.InteractionCreate, async interaction => {
 
       await updateChallengeBoard();
 
-      await interaction.reply({ content: '✅ Challenge board has been set up/updated in this channel.', ephemeral: true });
+      await interaction.reply({ content: '✅ Challenge board has been set up/updated in this channel.', emeral: true });
     }
   } else if (interaction.isButton()) {
     const userId = interaction.user.id;
     const currentWeek = getWeekNumber();
 
     if (data.userChallenges[userId]?.week === currentWeek) {
-      return interaction.reply({ content: '⏳ You already have a challenge this week. Try again next Monday!', ephemeral: true });
+      return interaction.reply({ content: '⏳ You already have a challenge this week. Try again next Monday!', emeral: true });
     }
 
     const rank = interaction.customId;
