@@ -2,9 +2,21 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
-const { Client, GatewayIntentBits, Events, ActionRowBuilder, ButtonBuilder, ButtonStyle, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { 
+  Client, GatewayIntentBits, Events, 
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, 
+  REST, Routes, SlashCommandBuilder 
+} = require('discord.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+// In-memory task lists
+const todoLists = {
+  high: [],
+  medium: [],
+  low: [],
+  waiting: [],
+};
 
 // --- Challenges for each rank ---
 const anyoneChallenges = [
@@ -66,11 +78,32 @@ const commands = [
     .setDescription('Get your weekly EMS challenge'),
   new SlashCommandBuilder()
     .setName('setupboard')
-    .setDescription('Create or move the weekly challenge board to this channel (admin only)')
+    .setDescription('Create or move the weekly challenge board to this channel (admin only)'),
+  new SlashCommandBuilder()
+    .setName('addtask')
+    .setDescription('Add a task to the to-do list')
+    .addStringOption(option =>
+      option.setName('priority')
+        .setDescription('Task priority')
+        .setRequired(true)
+        .addChoices(
+          { name: 'High', value: 'high' },
+          { name: 'Medium', value: 'medium' },
+          { name: 'Low', value: 'low' },
+          { name: 'Waiting on Approval', value: 'waiting' }
+        ))
+    .addStringOption(option =>
+      option.setName('task')
+        .setDescription('Task description')
+        .setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('showtasks')
+    .setDescription('Display all to-do lists')
 ].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
+// Register slash commands on ready
 async function registerCommands(clientId, guildId) {
   try {
     console.log('Registering slash commands...');
@@ -196,10 +229,11 @@ client.on(Events.InteractionCreate, async interaction => {
         components: [getRankButtons()],
         ephemeral: false
       });
+
     } else if (interaction.commandName === 'setupboard') {
       // Check admin permissions
       if (!interaction.member.permissions.has('ManageChannels')) {
-        return interaction.reply({ content: '❌ You need Manage Channels permission to use this.', emeral: true });
+        return interaction.reply({ content: '❌ You need Manage Channels permission to use this.', ephemeral: true });
       }
       data.boardChannelId = interaction.channelId;
       saveData();
@@ -207,7 +241,7 @@ client.on(Events.InteractionCreate, async interaction => {
       // Create or update board message
       const channel = await client.channels.fetch(data.boardChannelId).catch(() => null);
       if (!channel || !channel.isTextBased()) {
-        return interaction.reply({ content: '❌ Invalid channel.', emeral: true });
+        return interaction.reply({ content: '❌ Invalid channel.', ephemeral: true });
       }
 
       let message = null;
@@ -222,14 +256,33 @@ client.on(Events.InteractionCreate, async interaction => {
 
       await updateChallengeBoard();
 
-      await interaction.reply({ content: '✅ Challenge board has been set up/updated in this channel.', emeral: true });
+      await interaction.reply({ content: '✅ Challenge board has been set up/updated in this channel.', ephemeral: true });
+
+    } else if (interaction.commandName === 'addtask') {
+      const priority = interaction.options.getString('priority');
+      const task = interaction.options.getString('task');
+
+      todoLists[priority].push(task);
+      await interaction.reply(`📝 Added to **${priority.toUpperCase()}**: ${task}`);
+
+    } else if (interaction.commandName === 'showtasks') {
+      const formatList = (name, list) => `**${name}**\n${list.length ? list.map((t, i) => `> ${i + 1}. ${t}`).join('\n') : '> _No tasks_'}`;
+
+      const message = [
+        formatList('High Priority', todoLists.high),
+        formatList('Medium Priority', todoLists.medium),
+        formatList('Low Priority', todoLists.low),
+        formatList('Waiting on Approval', todoLists.waiting),
+      ].join('\n\n');
+
+      await interaction.reply({ content: message });
     }
   } else if (interaction.isButton()) {
     const userId = interaction.user.id;
     const currentWeek = getWeekNumber();
 
     if (data.userChallenges[userId]?.week === currentWeek) {
-      return interaction.reply({ content: '⏳ You already have a challenge this week. Try again next Monday!', emeral: true });
+      return interaction.reply({ content: '⏳ You already have a challenge this week. Try again next Monday!', ephemeral: true });
     }
 
     const rank = interaction.customId;
@@ -256,90 +309,6 @@ http.createServer((req, res) => {
 }).listen(PORT, () => {
   console.log(`✅ Keep-alive server running on port ${PORT}`);
 });
-
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
-require('dotenv').config(); // if using .env for your token
-
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-
-// In-memory task lists
-const todoLists = {
-  high: [],
-  medium: [],
-  low: [],
-  waiting: [],
-};
-
-// Register commands (run once on startup)
-client.once('ready', async () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
-
-  const commands = [
-    new SlashCommandBuilder()
-      .setName('addtask')
-      .setDescription('Add a task to the to-do list')
-      .addStringOption(option =>
-        option.setName('priority')
-          .setDescription('Task priority')
-          .setRequired(true)
-          .addChoices(
-            { name: 'High', value: 'high' },
-            { name: 'Medium', value: 'medium' },
-            { name: 'Low', value: 'low' },
-            { name: 'Waiting on Approval', value: 'waiting' }
-          ))
-      .addStringOption(option =>
-        option.setName('task')
-          .setDescription('Task description')
-          .setRequired(true)),
-
-    new SlashCommandBuilder()
-      .setName('showtasks')
-      .setDescription('Display all to-do lists'),
-  ].map(cmd => cmd.toJSON());
-
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-  try {
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: commands },
-    );
-    console.log('✅ Slash commands registered');
-  } catch (err) {
-    console.error('❌ Error registering commands:', err);
-  }
-});
-
-// Command handling
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-
-  const { commandName } = interaction;
-
-  if (commandName === 'addtask') {
-    const priority = interaction.options.getString('priority');
-    const task = interaction.options.getString('task');
-
-    todoLists[priority].push(task);
-    await interaction.reply(`📝 Added to **${priority.toUpperCase()}**: ${task}`);
-  }
-
-  if (commandName === 'showtasks') {
-    const formatList = (name, list) => `**${name}**\n${list.length ? list.map((t, i) => `> ${i + 1}. ${t}`).join('\n') : '> _No tasks_'}`;
-
-    const message = [
-      formatList('High Priority', todoLists.high),
-      formatList('Medium Priority', todoLists.medium),
-      formatList('Low Priority', todoLists.low),
-      formatList('Waiting on Approval', todoLists.waiting),
-    ].join('\n\n');
-
-    await interaction.reply({ content: message });
-  }
-});
-
-client.login(process.env.DISCORD_TOKEN);
-
 
 // --- Login ---
 client.login(process.env.TOKEN);
