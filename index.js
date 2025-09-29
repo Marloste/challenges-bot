@@ -387,6 +387,43 @@ module.exports = {
   }
 };
 
+const { REST, Routes } = require('discord.js');
+const { clientId, guildId, token } = require('./config.json'); // adjust if you store differently
+
+const commands = [
+  {
+    name: 'promo',
+    description: 'Promo rotation management',
+    options: [
+      { name: 'current', description: 'See whose turn it is', type: 1 },
+      { name: 'next', description: 'Advance to the next person', type: 1 },
+      { name: 'skip', description: 'Skip the current person', type: 1 },
+      { name: 'loa', description: 'Manage LOA list', type: 2, options: [
+          { name: 'add', description: 'Put a member on LOA', type: 1,
+            options: [{ name: 'user', description: 'The member', type: 6, required: true }] },
+          { name: 'remove', description: 'Remove a member from LOA', type: 1,
+            options: [{ name: 'user', description: 'The member', type: 6, required: true }] },
+        ]
+      },
+      { name: 'list', description: 'Show the rotation + LOA list', type: 1 },
+    ]
+  }
+];
+
+const rest = new REST({ version: '10' }).setToken(token);
+
+(async () => {
+  try {
+    console.log('Registering slash commands...');
+    await rest.put(
+      Routes.applicationGuildCommands(clientId, guildId),
+      { body: commands },
+    );
+    console.log('Slash commands registered ✅');
+  } catch (error) {
+    console.error(error);
+  }
+})();
+
 // --- Login ---
 client.login(process.env.TOKEN);
-
