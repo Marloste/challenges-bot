@@ -257,5 +257,136 @@ http.createServer((req, res) => {
   console.log(`✅ Keep-alive server running on port ${PORT}`);
 });
 
+// ./commands/promo.js
+const fs = require('fs').promises;
+const path = require('path');
+const { SlashCommandBuilder } = require('discord.js');
+
+// Hardcoded HC role
+const HC_ROLE_ID = '1266827216931782737';
+const DATA_PATH = path.join(__dirname, '..', 'data', 'promo.json');
+
+async function ensureDataFile() {
+  try {
+    await fs.access(DATA_PATH);
+  } catch {
+    await fs.mkdir(path.dirname(DATA_PATH), { recursive: true });
+    await fs.writeFile(DATA_PATH, JSON.stringify({ rotation: [], currentIndex: 0, loa: [] }, null, 2));
+  }
+}
+
+async function loadData() {
+  await ensureDataFile();
+  const raw = await fs.readFile(DATA_PATH, 'utf8');
+  return JSON.parse(raw);
+}
+
+async function saveData(data) {
+  await fs.writeFile(DATA_PATH, JSON.stringify(data, null, 2));
+}
+
+function mention(id) {
+  return `<@${id}>`;
+}
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('promo')
+    .setDescription('Manage promo duty rotation (HC only)')
+    .addSubcommand(s => s.setName('current').setDescription('Show who is up for promos'))
+    .addSubcommand(s => s.setName('next').setDescription('Advance to next person'))
+    .addSubcommand(s => s.setName('skip').setDescription('Skip the current person'))
+    .addSubcommand(s => s.setName('list').setDescription('Show full rotation and LOA list'))
+    .addSubcommandGroup(g => g.setName('loa').setDescription('Manage leave of absence')
+      .addSubcommand(s => s.setName('add').setDescription('Add a member to LOA')
+        .addUserOption(o => o.setName('user').setDescription('User to put on LOA').setRequired(true)))
+      .addSubcommand(s => s.setName('remove').setDescription('Remove a member from LOA')
+        .addUserOption(o => o.setName('user').setDescription('User to remove from LOA').setRequired(true)))),
+
+  async execute(interaction) {
+    const member = interaction.member;
+    if (!member.roles.cache.has(HC_ROLE_ID)) {
+      return interaction.reply({ content: 'This is HC-only.', ephemeral: true });
+    }
+
+    const data = await loadData();
+    const guild = interaction.guild;
+
+    // Build rotation based on HC role, minus LOA
+    const role = guild.roles.cache.get(HC_ROLE_ID);
+    const hcMembers = Array.from(role.members.keys());
+    const allowed = hcMembers.filter(id => !data.loa.includes(id));
+
+    // Sync order
+    data.rotation = data.rotation.filter(id => allowed.includes(id));
+    for (const id of allowed) {
+      if (!data.rotation.includes(id)) data.rotation.push(id);
+    }
+    if (!allowed.length) data.currentIndex = 0;
+    if (data.currentIndex >= data.rotation.length) data.currentIndex = 0;
+
+    const sub = interaction.options.getSubcommand(false);
+    const group = interaction.options.getSubcommandGroup(false);
+
+    // --- Commands ---
+    if (sub === 'current') {
+      if (!data.rotation.length) return interaction.reply('No one available in rotation.');
+      return interaction.reply(`It’s ${mention(data.rotation[data.currentIndex])}’s turn for promos.`);
+    }
+
+    if (sub === 'next') {
+      if (!data.rotation.length) return interaction.reply('Rotation is empty.');
+      data.currentIndex = (data.currentIndex + 1) % data.rotation.length;
+      await saveData(data);
+      return interaction.reply(`Next up: ${mention(data.rotation[data.currentIndex])}.`);
+    }
+
+    if (sub === 'skip') {
+      if (!data.rotation.length) return interaction.reply('Rotation is empty.');
+      const skipped = data.rotation[data.currentIndex];
+      data.currentIndex = (data.currentIndex + 1) % data.rotation.length;
+      await saveData(data);
+      return interaction.reply(`${mention(skipped)} was skipped. Now: ${mention(data.rotation[data.currentIndex])}.`);
+    }
+
+    if (group === 'loa') {
+      const user = interaction.options.getUser('user');
+      if (sub === 'add') {
+        if (!data.loa.includes(user.id)) data.loa.push(user.id);
+        if (data.rotation.includes(user.id)) {
+          const idx = data.rotation.indexOf(user.id);
+          data.rotation.splice(idx, 1);
+          if (idx <= data.currentIndex && data.currentIndex > 0) data.currentIndex--;
+        }
+        await saveData(data);
+        return interaction.reply(`${mention(user.id)} added to LOA.`);
+      }
+      if (sub === 'remove') {
+        data.loa = data.loa.filter(id => id !== user.id);
+        if (!data.rotation.includes(user.id) && guild.members.cache.has(user.id)) {
+          data.rotation.push(user.id);
+        }
+        await saveData(data);
+        return interaction.reply(`${mention(user.id)} removed from LOA.`);
+      }
+    }
+
+    if (sub === 'list') {
+      let lines = [];
+      if (!data.rotation.length) {
+        lines.push('Rotation is empty.');
+      } else {
+        lines = data.rotation.map((id, i) =>
+          `${i === data.currentIndex ? '➡️' : `${i + 1}.`} ${mention(id)}`
+        );
+      }
+      const loaList = data.loa.map(id => mention(id)).join(', ') || 'None';
+      lines.push(`\nLOA: ${loaList}`);
+      return interaction.reply(lines.join('\n'));
+    }
+  }
+};
+
 // --- Login ---
 client.login(process.env.TOKEN);
+
