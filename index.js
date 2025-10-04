@@ -258,7 +258,6 @@ http.createServer((req, res) => {
 });
 
 // ./commands/promo.js
-const path = require('path');
 const { SlashCommandBuilder } = require('discord.js');
 
 // Hardcoded HC role
@@ -426,4 +425,5 @@ const rest = new REST({ version: '10' }).setToken(token);
 
 // --- Login ---
 client.login(process.env.TOKEN);
+
 
