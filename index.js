@@ -383,7 +383,7 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
-// --- Keep-alive server ---
+// --- Minimal keep-alive server ---
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.writeHead(200);
@@ -393,4 +393,5 @@ http.createServer((req, res) => {
 });
 
 // --- Login ---
-client.login(token);
+client.login(process.env.DISCORD_TOKEN);
+
