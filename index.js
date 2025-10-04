@@ -257,8 +257,6 @@ http.createServer((req, res) => {
   console.log(`✅ Keep-alive server running on port ${PORT}`);
 });
 
-// ./commands/promo.js
-const { SlashCommandBuilder } = require('discord.js');
 
 // Hardcoded HC role
 const HC_ROLE_ID = '1266827216931782737';
@@ -425,5 +423,6 @@ const rest = new REST({ version: '10' }).setToken(token);
 
 // --- Login ---
 client.login(process.env.TOKEN);
+
 
 
