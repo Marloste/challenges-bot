@@ -1,4 +1,7 @@
 {
   "rotation": [],
-  "loa": []
+  "currentIndex": 0,
+  "loa": [],
+  "promoChannelId": null,
+  "lastWeek": 0
 }
