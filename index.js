@@ -82,16 +82,22 @@ const promocommands = [
     description: 'Promo rotation management',
     options: [
       { name: 'current', description: 'See whose turn it is', type: 1 },
-      { name: 'next', description: 'Advance to the next person', type: 1 },
+      { name: 'next', description: 'Advance to next person', type: 1 },
       { name: 'skip', description: 'Skip the current person', type: 1 },
-      { name: 'loa', description: 'Manage LOA list', type: 2, options: [
+      { name: 'add', description: 'Add a member to rotation', type: 1,
+        options: [{ name: 'user', description: 'The member', type: 6, required: true }] },
+      { name: 'remove', description: 'Remove a member from rotation', type: 1,
+        options: [{ name: 'user', description: 'The member', type: 6, required: true }] },
+      { name: 'setchannel', description: 'Set the promo posting channel', type: 1,
+        options: [{ name: 'channel', description: 'Text channel', type: 7, required: true }] },
+      { name: 'loa', description: 'Manage LOA', type: 2, options: [
           { name: 'add', description: 'Put a member on LOA', type: 1,
             options: [{ name: 'user', description: 'The member', type: 6, required: true }] },
           { name: 'remove', description: 'Remove a member from LOA', type: 1,
-            options: [{ name: 'user', description: 'The member', type: 6, required: true }] },
+            options: [{ name: 'user', description: 'The member', type: 6, required: true }] }
         ]
       },
-      { name: 'list', description: 'Show the rotation + LOA list', type: 1 },
+      { name: 'list', description: 'Show rotation + LOA', type: 1 }
     ]
   }
 ];
@@ -169,6 +175,29 @@ async function resetWeeklyChallenges() {
 }
 
 // --- Client ready ---
+setInterval(async () => {
+  const now = new Date();
+  const currentWeek = getWeekNumber();
+  const data = await loadPromoData();
+
+  // Check if week changed
+  if (data.lastWeek !== currentWeek && data.rotation.length) {
+    data.lastWeek = currentWeek;
+    // Ensure currentIndex is in bounds
+    if (data.currentIndex >= data.rotation.length) data.currentIndex = 0;
+
+    if (data.promoChannelId) {
+      const channel = await client.channels.fetch(data.promoChannelId).catch(() => null);
+      if (channel && channel.isTextBased()) {
+        await channel.send(`📢 This week's promo duty: ${mention(data.rotation[data.currentIndex])}`);
+      }
+    }
+
+    // Move to next person for next week
+    data.currentIndex = (data.currentIndex + 1) % data.rotation.length;
+    await savePromoData(data);
+  }
+}, 60 * 1000); // checks every minute
 client.once(Events.ClientReady, async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   loadChallengeData();
@@ -356,5 +385,6 @@ http.createServer((req, res) => {
 
 // --- Login ---
 client.login(process.env.TOKEN);
+
 
 
