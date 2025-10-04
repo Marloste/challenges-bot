@@ -69,7 +69,9 @@ const commands = [
     .setDescription('Create or move the weekly challenge board to this channel (admin only)')
 ].map(cmd => cmd.toJSON());
 
-const { clientId, guildId, token } = require('./config.json'); // adjust if you store differently
+const clientId = process.env.CLIENT_ID;
+const guildId = process.env.GUILD_ID;
+const token = process.env.TOKEN;
 
 const rest = new REST({ version: '10' }).setToken(token);
 
@@ -342,3 +344,4 @@ http.createServer((req, res) => {
 
 // --- Login ---
 client.login(process.env.TOKEN);
+
